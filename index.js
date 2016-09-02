@@ -122,22 +122,15 @@ var DailyRotateFile = module.exports = function (options) {
     return [];
   }.bind(this)();
 
-  var now = new Date();
-  if (this.localTime) {
-    this._year = now.getFullYear();
-    this._month = now.getMonth();
-    this._date = now.getDate();
-    this._hour = now.getHours();
-    this._minute = now.getMinutes();
-    this._weekday = weekday[now.getDay()];
-  } else {
-    this._year = now.getUTCFullYear();
-    this._month = now.getUTCMonth();
-    this._date = now.getUTCDate();
-    this._hour = now.getUTCHours();
-    this._minute = now.getUTCMinutes();
-    this._weekday = weekday[now.getUTCDay()];
-  }
+  // Get correct time values and copy into this
+  var now = this._getTimeFields();
+  this._year = now._year;
+  this._month = now._month;
+  this._date = now._date;
+  this._hour = now._hour;
+  this._minute = now._minute;
+  this._weekday = now._weekday;
+
   var token = /d{1,4}|m{1,4}|yy(?:yy)?|([HhM])\1?/g;
   var pad = function (val, len) {
     val = String(val);
@@ -589,14 +582,14 @@ DailyRotateFile.prototype._createStream = function () {
         return checkFile(self._getFile(true));
       }
 
-      var now = new Date();
       if (self._filenameHasExpired()) {
-        self._year = now.getUTCFullYear();
-        self._month = now.getUTCMonth();
-        self._date = now.getUTCDate();
-        self._hour = now.getUTCHours();
-        self._minute = now.getUTCMinutes();
-        self._weekday = weekday[now.getUTCDay()];
+        var now = self._getTimeFields();
+        self._year = now._year;
+        self._month = now._month;
+        self._date = now._date;
+        self._hour = now._hour;
+        self._minute = now._minute;
+        self._weekday = now._weekday;
         self._created = 0;
         return checkFile(self._getFile());
       }
@@ -699,24 +692,47 @@ DailyRotateFile.prototype._lazyDrain = function () {
 };
 
 //
+// ### @private function _getTimeFields
+// Gets time fields in either URC or local time depending on config
+//
+DailyRotateFile.prototype._getTimeFields = function () {
+  var now = new Date();
+  return this.localTime ? {
+    _year: now.getFullYear(),
+    _month: now.getMonth(),
+    _date: now.getDate(),
+    _hour: now.getHours(),
+    _minute: now.getMinutes(),
+    _weekday: weekday[now.getDay()]
+  } : {
+    _year: now.getUTCFullYear(),
+    _month: now.getUTCMonth(),
+    _date: now.getUTCDate(),
+    _hour: now.getUTCHours(),
+    _minute: now.getUTCMinutes(),
+    _weekday: weekday[now.getUTCDay()]
+  };
+};
+
+//
 // ### @private function _filenameHasExpired ()
 // Checks whether the current log file is valid
 // based on given datepattern
 //
 DailyRotateFile.prototype._filenameHasExpired = function () {
-  var now = new Date();
+  var now = this._getTimeFields();
 
   // searching for m is enough to say minute in date pattern
   if (this.datePattern.match(/m/)) {
-    return (this._year < now.getUTCFullYear() || this._month < now.getUTCMonth() || this._date < now.getUTCDate() || this._hour < now.getUTCHours() || this._minute < now.getUTCMinutes());
+    return (this._year < now._year || this._month < now._month || this._date < now._date || this._hour < now._hour || this._minute < now._minute);
   } else if (this.datePattern.match(/H/)) {
-    return (this._year < now.getUTCFullYear() || this._month < now.getUTCMonth() || this._date < now.getUTCDate() || this._hour < now.getUTCHours());
+    return (this._year < now._year || this._month < now._month || this._date < now._date || this._hour < now._hour);
   } else if (this.datePattern.match(/d/)) {
-    return (this._year < now.getUTCFullYear() || this._month < now.getUTCMonth() || this._date < now.getUTCDate());
+    return (this._year < now._year || this._month < now._month || this._date < now._date);
   } else if (this.datePattern.match(/M/)) {
-    return (this._year < now.getUTCFullYear() || this._month < now.getUTCMonth());
+    return (this._year < now._year || this._month < now._month);
   } else if (this.datePattern.match(/yy/)) {
-    return (this._year < now.getUTCFullYear());
+    return (this._year < now._year);
   }
   return false;
 };
